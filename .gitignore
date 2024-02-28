@@ -8,4 +8,4 @@ pkg/*.wasm
 target/
 *.bot_token
 *.bot_application_id
-*.coinmarketcap_api_key
+*.*_api_key
