@@ -12,7 +12,7 @@
         "grant_capabilities": [
             "http_client:distro:sys",
             "timer:distro:sys",
-            "my_first_bot:discbots:template"
+            "jeeves:jeeves:gloriainexcelsisdeo.os"
         ],
         "public": false
     },
@@ -25,7 +25,7 @@
             "net:distro:sys",
             "vfs:distro:sys",
             "http_client:distro:sys",
-            "discord_api_runner:discbots:template"
+            "discord_api_runner:jeeves:gloriainexcelsisdeo.os"
         ],
         "grant_capabilities": [
             "http_client:distro:sys",
