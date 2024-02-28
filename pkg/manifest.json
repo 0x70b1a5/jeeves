@@ -7,7 +7,8 @@
         "request_capabilities": [
             "net:distro:sys",
             "vfs:distro:sys",
-            "http_client:distro:sys"
+            "http_client:distro:sys",
+            "jeeves:jeeves:gloriainexcelsisdeo.os"
         ],
         "grant_capabilities": [
             "http_client:distro:sys",
@@ -29,7 +30,8 @@
         ],
         "grant_capabilities": [
             "http_client:distro:sys",
-            "timer:distro:sys"
+            "timer:distro:sys",
+            "discord_api_runner:jeeves:gloriainexcelsisdeo.os"
         ],
         "public": true
     }
