@@ -1,0 +1,13 @@
+{
+  "name": "jeeves",
+  "subtitle": "Jeeves",
+  "version": "0.1.0",
+  "website": "https://github.com/0x70b1a5/jeeves",
+  "mirrors": [
+      "mothu-et-doria.os",
+      "gloriainexcelsisdeo.os"
+  ],
+  "versions": [
+      "a5a1067261b33ce4f151ea182d426f1e6f58c603314cb51eac40d8c56d5290da"
+  ]
+}
