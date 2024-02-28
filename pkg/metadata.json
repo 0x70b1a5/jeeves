@@ -1,9 +1,9 @@
 {
-    "package": "discbots",
-    "publisher": "template",
+    "package": "jeeves",
+    "publisher": "gloriainexcelsisdeo.os",
     "version": [
         0,
-        2,
+        1,
         0
     ]
 }

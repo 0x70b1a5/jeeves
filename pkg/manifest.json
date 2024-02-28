@@ -17,8 +17,8 @@
         "public": false
     },
     {
-        "process_name": "my_first_bot",
-        "process_wasm_path": "/my_bot.wasm",
+        "process_name": "jeeves",
+        "process_wasm_path": "/jeeves.wasm",
         "on_exit": "Restart",
         "request_networking": true,
         "request_capabilities": [

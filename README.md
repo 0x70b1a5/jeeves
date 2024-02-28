@@ -3,4 +3,4 @@
 It uses the kinode [discord_bot_example](https://github.com/kinode-dao/discord_bot_example) as a base.
 
 ## Setup
-Put your API key in .openai_api_key. The rest of the setup is identical to `discord_bot_example`.
+Put your API key in `my_bot/.openai_api_key. The rest of the setup is identical to `discord_bot_example`.
