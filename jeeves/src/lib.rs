@@ -147,7 +147,7 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
         let Ok(event) = serde_json::from_slice::<GatewayReceiveEvent>(&body) else {
             return Ok(())
         };
-        println!("jeeves: got event: {:?}", event);
+        // println!("jeeves: got event: {:?}", event);
 
         match event {
             GatewayReceiveEvent::InteractionCreate(interaction) => {
@@ -215,11 +215,11 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                     return Ok(())
                 }
                 let Some (guild) = state.guilds.get_mut(&guild_id) else {
-                    println!("jeeves: message from outside guild: {}", guild_id);
+                    // println!("jeeves: message from outside guild: {}", guild_id);
                     return Ok(());
                 };
                 if !guild.our_channels.contains(&message.channel_id) {
-                    println!("jeeves: got message in channel not in our channels: {}", message.channel_id);
+                    // println!("jeeves: got message in channel not in our channels: {}", message.channel_id);
                     return Ok(());
                 }
                 if guild.cooldown > 0 {
@@ -244,7 +244,7 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
 
                 let completion = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
 
-                println!("jeeves: got completion: {}", completion);
+                // println!("jeeves: got completion: {}", completion);
 
                 send_message_to_discord(
                     completion.clone(), 
@@ -478,7 +478,7 @@ fn create_chat_completion(
             match completion["choices"][0]["message"]["content"].as_str() {
                 Some(text) => {
                     let t = text.to_string();
-                    println!("jeeves says: {}", t);
+                    // println!("jeeves says: {}", t);
                     Ok(t)
                 },
                 None => {
