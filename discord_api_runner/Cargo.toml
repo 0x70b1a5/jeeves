@@ -14,7 +14,7 @@ bincode = "1.3.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 kinode_process_lib = { git = "https://github.com/uqbar-dao/process_lib.git", tag = "v0.5.4-alpha" }
-discord_api = { git = "https://github.com/uqbar-dao/discord_api.git", rev = "5343c47a63", features = ["with_process_lib"] }
+discord_api = { git = "https://github.com/uqbar-dao/discord_api.git", rev = "bd504ccf", features = ["with_process_lib"] }
 wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "efcc759" }
 
 [lib]
