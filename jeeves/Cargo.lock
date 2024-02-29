@@ -38,7 +38,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "discord_api"
 version = "0.1.0"
-source = "git+https://github.com/uqbar-dao/discord_api.git?rev=3b8942cd9a#3b8942cd9aa0babde6732b8254a3d8c571a93ff4"
+source = "git+https://github.com/uqbar-dao/discord_api.git?rev=8c7c243a0f9a0c80#8c7c243a0f9a0c806bbe19f53cee4d7ecfcf69e2"
 dependencies = [
  "anyhow",
  "bincode",
