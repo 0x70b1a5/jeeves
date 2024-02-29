@@ -109,20 +109,20 @@ fn init(our: Address) {
 
     let discord_api_id = ProcessId::new(Some("discord_api_runner"), our.package(), our.publisher());
 
-    for command in commands {
-        Request::new()
-            .target((our.node.as_ref(), discord_api_id.clone()))
-            .body(
-                serde_json::to_vec(&DiscordApiRequest::Http {
-                    bot: bot.clone(),
-                    call: command,
-                })
-                .unwrap(),
-            )
-            .expects_response(5)
-            .send()
-            .expect("jeeves: failed to trigger child process");
-    }
+    // for command in commands {
+    //     Request::new()
+    //         .target((our.node.as_ref(), discord_api_id.clone()))
+    //         .body(
+    //             serde_json::to_vec(&DiscordApiRequest::Http {
+    //                 bot: bot.clone(),
+    //                 call: command,
+    //             })
+    //             .unwrap(),
+    //         )
+    //         .expects_response(5)
+    //         .send()
+    //         .expect("jeeves: failed to trigger child process");
+    // }
 
     let state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
