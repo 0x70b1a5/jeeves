@@ -109,20 +109,20 @@ fn init(our: Address) {
 
     let discord_api_id = ProcessId::new(Some("discord_api_runner"), our.package(), our.publisher());
 
-    // for command in commands {
-    //     Request::new()
-    //         .target((our.node.as_ref(), discord_api_id.clone()))
-    //         .body(
-    //             serde_json::to_vec(&DiscordApiRequest::Http {
-    //                 bot: bot.clone(),
-    //                 call: command,
-    //             })
-    //             .unwrap(),
-    //         )
-    //         .expects_response(5)
-    //         .send()
-    //         .expect("jeeves: failed to trigger child process");
-    // }
+    for command in commands {
+        Request::new()
+            .target((our.node.as_ref(), discord_api_id.clone()))
+            .body(
+                serde_json::to_vec(&DiscordApiRequest::Http {
+                    bot: bot.clone(),
+                    call: command,
+                })
+                .unwrap(),
+            )
+            .expects_response(5)
+            .send()
+            .expect("jeeves: failed to trigger child process");
+    }
 
     let state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
@@ -147,7 +147,6 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
         let Ok(event) = serde_json::from_slice::<GatewayReceiveEvent>(&body) else {
             return Ok(())
         };
-        // println!("jeeves: got event: {:?}", event);
 
         match event {
             GatewayReceiveEvent::InteractionCreate(interaction) => {
@@ -193,7 +192,6 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             interaction.id,
                             interaction.token,
                             guild_id,
-                            data,
                             channel_id
                         );
                     }
@@ -322,11 +320,10 @@ fn save_channel(
     interaction_id: String,
     interaction_token: String,
     guild_id: String,
-    data: InteractionData,
     channel_id: String,
 ) -> anyhow::Result<()> {
     println!("jeeves: saving channel {}", channel_id);
-    create_guild_if_not_exists(&data.guild_id, &channel_id)?;
+    create_guild_if_not_exists(&Some(guild_id.clone()), &channel_id)?;
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
@@ -338,7 +335,7 @@ fn save_channel(
         guild.our_channels.push(channel_id.clone());
         set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
     } else {
-        println!("jeeves: channel id already in");
+        // println!("jeeves: channel id already in");
     }
     
     send_message_to_discord("Thank you, sir. I shall endeavor to respond to messages in this channel.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
