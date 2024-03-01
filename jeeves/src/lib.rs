@@ -170,7 +170,6 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             &discord_api_id,
                             interaction.id,
                             interaction.token,
-                            guild_id,
                         );
                     }
                     "clear" => {
@@ -277,7 +276,6 @@ fn respond_with_help(
     discord_api_id: &ProcessId,
     interaction_id: String,
     interaction_token: String,
-    guild_id: String
 ) -> anyhow::Result<()> {
     let content: String = r#"Greetings, sir. I am Jeeves, your most humble assistant.
 In order to utilize my features, you may avail your esteemed self of one of the following commands.
@@ -392,7 +390,7 @@ fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> an
 
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
-    if let Some(guild) = state.guilds.get_mut(guild_id) {
+    if let Some(_guild) = state.guilds.get(guild_id) {
         return Ok(())
     };
 
@@ -443,7 +441,7 @@ fn create_chat_completion(
         "messages": messages.iter().map(|m| {
             serde_json::json!({
                 "role": if m.0 == "Jeeves" { "assistant" } else { "user" },
-                "content": m.1,
+                "content": format!("[{}]: {}", m.0, m.1),
             })
         }).collect::<Vec<_>>(),
         "max_tokens": 200,
@@ -454,7 +452,7 @@ fn create_chat_completion(
 
     // println!("jeeves: sending openai req");
 
-    let res = send_request_await_response(
+    let _res = send_request_await_response(
         Method::POST, 
         Url::parse(OPENAI_URL).unwrap(),
         Some(HashMap::from([
@@ -465,7 +463,7 @@ fn create_chat_completion(
         body,
     )?;
 
-    println!("jeeves: got openai res: {:?}", res);
+    // println!("jeeves: got openai res: {:?}", res);
 
     // Get the blob from the response, parse and generate the response content
     match get_blob() {
