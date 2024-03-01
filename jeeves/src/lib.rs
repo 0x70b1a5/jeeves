@@ -260,6 +260,18 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             data
                         )?;
                     }
+                    "status" => {
+                        let _ = send_status(
+                            &our,
+                            &bot,
+                            &discord_api_id,
+                            interaction.id,
+                            interaction.token,
+                            guild_id,
+                            channel_id,
+                            data
+                        )?;
+                    }
                     _ => {}
                 }
             }
@@ -357,6 +369,7 @@ In order to utilize my features, you may avail your esteemed self of one of the 
 `/init`: Tell Jeeves to start responding to messages in this channel
 `/leave`: Tell Jeeves to stop responding to messages in this channel
 `/model`: Change the language model Jeeves is using (`gpt-4`, `gpt-3.5-turbo`)
+`/status`: See what channels Jeeves is in, the size of message logs, model data, etc.
 "#.to_string();
 
     send_message_to_discord(content, our, bot, discord_api_id, interaction_id, Some(interaction_token))
@@ -479,6 +492,26 @@ fn switch_model(
     
     send_message_to_discord(format!("LLM has been changed to {}", model).to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
 }   
+
+fn send_status(
+    our: &Address,
+    bot: &BotId,
+    discord_api_id: &ProcessId,
+    interaction_id: String,
+    interaction_token: String,
+    guild_id: String,
+    _channel_id: String,
+    data: InteractionData
+) -> anyhow::Result<()> {
+    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
+        .unwrap_or(empty_state());
+    let Some(guild) = state.guilds.get_mut(&guild_id) else {
+        println!("jeeves: no guild for switch_model");
+        return Ok(())
+    };
+    let json_guild_state = serde_json::to_string(&guild)?;
+    send_message_to_discord(json_guild_state, our, bot, discord_api_id, interaction_id, Some(interaction_token))
+}
 
 fn send_message_to_discord(
     msg: String,
