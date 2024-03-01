@@ -52,7 +52,7 @@ call_init!(init);
 
 fn init(our: Address) {
     let intents = 8704; // 512 Read + 8192 Manage Messages
-    let bot = BotId::new(BOT_TOKEN.to_string(), intents);
+    let bot = BotId::new(BOT_TOKEN.trim().to_string(), intents);
 
     // Spawn the API process
     let result = match init_discord_api(&our, &bot) {
@@ -72,7 +72,7 @@ fn init(our: Address) {
 
     // Register all the commands the bot will handle
     let help_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
-        application_id: BOT_APPLICATION_ID.to_string(),
+        application_id: BOT_APPLICATION_ID.trim().to_string(),
         command: NewApplicationCommand {
             name: "help".to_string(),
             description: Some("Show help".to_string()),
@@ -82,7 +82,7 @@ fn init(our: Address) {
     });
 
     let clear_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
-        application_id: BOT_APPLICATION_ID.to_string(),
+        application_id: BOT_APPLICATION_ID.trim().to_string(),
         command: NewApplicationCommand {
             name: "clear".to_string(),
             description: Some("Make Jeeves forget the conversation thus far".to_string()),
@@ -92,7 +92,7 @@ fn init(our: Address) {
     });
 
     let init_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
-        application_id: BOT_APPLICATION_ID.to_string(),
+        application_id: BOT_APPLICATION_ID.trim().to_string(),
         command: NewApplicationCommand {
             name: "init".to_string(),
             description: Some("Tell Jeeves to respond to posts in this channel".to_string()),
@@ -458,7 +458,7 @@ fn create_chat_completion(
         Method::POST, 
         Url::parse(OPENAI_URL).unwrap(),
         Some(HashMap::from([
-            ("Authorization".to_string(), format!("Bearer {}", OPENAI_API_KEY)),
+            ("Authorization".to_string(), format!("Bearer {}", OPENAI_API_KEY.trim())),
             ("Content-Type".to_string(), "application/json".to_string()),
         ])),
         5,
