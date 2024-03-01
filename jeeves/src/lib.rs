@@ -32,7 +32,7 @@ struct Utterance {
 struct GuildInfo {
     id: String,
     our_channels: Vec<String>,
-    message_log: Vec<Utterance>,
+    message_log: HashMap<String, Vec<Utterance>>,
     cooldown: u32,
     debug: bool,
 }
@@ -100,11 +100,22 @@ fn init(our: Address) {
             options: None,
         },
     });
+
+    let leave_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
+        application_id: BOT_APPLICATION_ID.trim().to_string(),
+        command: NewApplicationCommand {
+            name: "leave".to_string(),
+            description: Some("Tell Jeeves to leave this channel".to_string()),
+            command_type: Some(ApplicationCommandType::ChatInput.as_u8()),
+            options: None,
+        },
+    });
     
     let commands = vec![
         help_command,
         clear_command,
         init_command,
+        leave_command,
     ];
 
     let discord_api_id = ProcessId::new(Some("discord_api_runner"), our.package(), our.publisher());
@@ -121,7 +132,7 @@ fn init(our: Address) {
             )
             .expects_response(5)
             .send()
-            .expect("jeeves: failed to trigger child process");
+            .expect("jeeves: failed to register command");
     }
 
     let state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
@@ -194,6 +205,17 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             channel_id
                         );
                     }
+                    "leave" => {
+                        let _ = leave_channel(
+                            &our,
+                            &bot,
+                            &discord_api_id,
+                            interaction.id,
+                            interaction.token,
+                            guild_id,
+                            channel_id
+                        );
+                    }
                     _ => {}
                 }
             }
@@ -228,15 +250,19 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                     return Ok(());
                 };
                 // we get dupe message events sometimes
-                if guild.message_log.iter().any(|m| m.id == Some(message.id.clone())) {
+                if guild.message_log.get(&message.channel_id)
+                    .unwrap_or(&vec![])
+                    .iter().any(|m| m.id == Some(message.id.clone())) {
                     return Ok(());
                 }
 
-                guild.message_log.push(Utterance {
-                    id: Some(message.id.clone()),
-                    username: author.username,
-                    content
-                });
+                guild.message_log.entry(message.channel_id.clone())
+                    .or_insert(vec![])
+                    .push(Utterance {
+                        id: Some(message.id.clone()),
+                        username: author.username,
+                        content
+                    });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
                 let completion = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
@@ -257,11 +283,13 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                 let Some (guild) = state.guilds.get_mut(&guild_id) else {
                     return Ok(());
                 };
-                guild.message_log.push(Utterance {
-                    id: None,
-                    username: "Jeeves".to_string(),
-                    content: completion
-                });
+                guild.message_log.entry(message.channel_id.clone())
+                    .or_insert(vec![])
+                    .push(Utterance {
+                        id: None,
+                        username: "Jeeves".to_string(),
+                        content: completion
+                    });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
             }
             _ => {}
@@ -339,6 +367,34 @@ fn save_channel(
     send_message_to_discord("Thank you, sir. I shall endeavor to respond to messages in this channel.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
 }
 
+fn leave_channel(
+    our: &Address,
+    bot: &BotId,
+    discord_api_id: &ProcessId,
+    interaction_id: String,
+    interaction_token: String,
+    guild_id: String,
+    channel_id: String,
+) -> anyhow::Result<()> {
+    println!("jeeves: leaving channel {}", channel_id);
+    create_guild_if_not_exists(&Some(guild_id.clone()), &channel_id)?;
+    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
+        .unwrap_or(empty_state());
+    let Some(guild) = state.guilds.get_mut(&guild_id) else {
+        println!("jeeves: no guild");
+        return Ok(())
+    };
+    if guild.our_channels.contains(&channel_id) {
+        println!("jeeves: leaving channel id {}", channel_id);
+        guild.our_channels.retain(|c| c != &channel_id);
+        set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
+    } else {
+        // println!("jeeves: channel id already out");
+    }
+    
+    send_message_to_discord("Thank you, sir. No longer shall I respond to messages in this channel.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
+}
+
 fn send_message_to_discord(
     msg: String,
     our: &Address,
@@ -397,7 +453,7 @@ fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> an
     let guild = GuildInfo {
         id: guild_id.clone(),
         our_channels: vec![channel_id.clone()],
-        message_log: vec![],
+        message_log: HashMap::new(),
         cooldown: 0,
         debug: false
     };
@@ -426,9 +482,10 @@ fn create_chat_completion_for_guild_channel(
     }
     
     let mut messages: Vec<(String, String)> = vec![system_prompt()];
-    for msg in guild.message_log.clone() {
-        messages.push((msg.username.clone(), msg.content.clone()));
-    }
+    for msg in guild.message_log.get(channel_id)
+        .unwrap_or(&vec![]).clone() {
+            messages.push((msg.username.clone(), msg.content.clone()));
+        }
 
     create_chat_completion(messages)
 }
