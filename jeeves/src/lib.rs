@@ -472,7 +472,7 @@ fn create_chat_completion(
             // println!("jeeves: completion: {:?}", completion);
             match completion["choices"][0]["message"]["content"].as_str() {
                 Some(text) => {
-                    let t = text.to_string();
+                    let t = text.to_string().replace("[Jeeves]:", "");
                     // println!("jeeves says: {}", t);
                     Ok(t)
                 },
