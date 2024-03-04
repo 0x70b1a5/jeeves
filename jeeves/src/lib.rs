@@ -650,7 +650,7 @@ fn create_chat_completion(
     match get_blob() {
         Some(response_data) => {
             let completion = serde_json::from_slice::<serde_json::Value>(&response_data.bytes)?;
-            // println!("jeeves: completion: {:?}", completion);
+            println!("jeeves: completion: {:?}", completion);
             match completion["choices"][0]["message"]["content"].as_str() {
                 Some(text) => {
                     let t = text.to_string().replace("[Jeeves]:", "");
