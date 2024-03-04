@@ -631,9 +631,9 @@ fn create_chat_completion(
         .as_bytes()
         .to_vec();
 
-    // println!("jeeves: sending openai req");
+    println!("jeeves: sending openai req: {:?}", body);
 
-    let _res = send_request_await_response(
+    let res = send_request_await_response(
         Method::POST, 
         Url::parse(OPENAI_URL).unwrap(),
         Some(HashMap::from([
@@ -644,7 +644,7 @@ fn create_chat_completion(
         body,
     )?;
 
-    // println!("jeeves: got openai res: {:?}", res);
+    println!("jeeves: got openai res: {:?}", res);
 
     // Get the blob from the response, parse and generate the response content
     match get_blob() {
@@ -654,7 +654,7 @@ fn create_chat_completion(
             match completion["choices"][0]["message"]["content"].as_str() {
                 Some(text) => {
                     let t = text.to_string().replace("[Jeeves]:", "");
-                    // println!("jeeves says: {}", t);
+                    println!("jeeves says: {}", t);
                     Ok(t)
                 },
                 None => {
