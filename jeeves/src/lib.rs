@@ -480,7 +480,7 @@ fn switch_model(
         return Ok(())
     }
 
-    let model = opt.value.to_string();
+    let model = opt.value.as_str().unwrap_or("").to_string();
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
