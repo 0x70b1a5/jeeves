@@ -627,9 +627,7 @@ fn create_chat_completion(
         }).collect::<Vec<_>>(),
         "max_tokens": 200,
         "temperature": 1.25,
-    }))?
-        .as_bytes()
-        .to_vec();
+    }))?;
 
     println!("jeeves: sending openai req: {:?}", body);
 
@@ -641,7 +639,9 @@ fn create_chat_completion(
             ("Content-Type".to_string(), "application/json".to_string()),
         ])),
         5,
-        body,
+        body
+            .as_bytes()
+            .to_vec(),
     )?;
 
     println!("jeeves: got openai res: {:?}", res);
