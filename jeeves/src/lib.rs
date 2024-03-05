@@ -1,8 +1,21 @@
+mod llm_types;
+use llm_types::openai::ChatParams;
+use llm_types::openai::ChatRequest;
+use llm_types::openai::LLMRequest;
+use llm_types::openai::LLMResponse;
+use llm_types::openai::Message as OpenaiMessage;
+
 use discord_api::{
-    ApplicationCommandOption, ApplicationCommandOptionType, ApplicationCommandType, BotId, CommandsCall, DiscordApiRequest, GatewayReceiveEvent, HttpApiCall, InteractionCallbackData, InteractionData, InteractionsCall, MessagesCall, NewApplicationCommand
+    ApplicationCommandOption, ApplicationCommandOptionType, ApplicationCommandType, BotId,
+    CommandsCall, DiscordApiRequest, GatewayReceiveEvent, HttpApiCall, InteractionCallbackData,
+    InteractionData, InteractionsCall, MessagesCall, NewApplicationCommand,
 };
 use kinode_process_lib::{
-    await_message, call_init, get_blob, get_typed_state, http::{send_request, send_request_await_response, HttpClientAction, Method, OutgoingHttpRequest}, println, set_state, Address, Message, ProcessId, Request, SendError
+    await_message, call_init, get_blob, get_typed_state,
+    http::{
+        send_request, send_request_await_response, HttpClientAction, Method, OutgoingHttpRequest,
+    },
+    println, set_state, Address, Message, ProcessId, Request, SendError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -25,7 +38,7 @@ const OPENAI_URL: &str = "https://api.openai.com/v1/chat/completions";
 struct Utterance {
     id: Option<String>,
     username: String,
-    content: String
+    content: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -40,12 +53,12 @@ struct GuildInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct JeevesState {
-    guilds: HashMap<String, GuildInfo>
+    guilds: HashMap<String, GuildInfo>,
 }
 
 fn empty_state() -> JeevesState {
     JeevesState {
-        guilds: HashMap::new()
+        guilds: HashMap::new(),
     }
 }
 
@@ -116,7 +129,10 @@ fn init(our: Address) {
         application_id: BOT_APPLICATION_ID.trim().to_string(),
         command: NewApplicationCommand {
             name: "status".to_string(),
-            description: Some("See what channels Jeeves is in, the size of message logs, model data, etc.".to_string()),
+            description: Some(
+                "See what channels Jeeves is in, the size of message logs, model data, etc."
+                    .to_string(),
+            ),
             command_type: Some(ApplicationCommandType::ChatInput.as_u8()),
             options: None,
         },
@@ -128,19 +144,17 @@ fn init(our: Address) {
             name: "model".to_string(),
             description: Some("Change the LLM that Jeeves will use".to_string()),
             command_type: Some(ApplicationCommandType::ChatInput.as_u8()),
-            options: Some(vec![
-                ApplicationCommandOption {
-                    name: "model".to_string(),
-                    name_localizations: None,
-                    description_localizations: None,
-                    description: "The model to use".to_string(),
-                    option_type: ApplicationCommandOptionType::String.as_u8(),
-                    required: Some(true),
-                },
-            ]),
+            options: Some(vec![ApplicationCommandOption {
+                name: "model".to_string(),
+                name_localizations: None,
+                description_localizations: None,
+                description: "The model to use".to_string(),
+                option_type: ApplicationCommandOptionType::String.as_u8(),
+                required: Some(true),
+            }]),
         },
     });
-    
+
     let commands = vec![
         help_command,
         clear_command,
@@ -188,17 +202,17 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
         // Handle Discord API events
         // Can handle any of their abundant events here, depending on your bot's perms...
         let Ok(event) = serde_json::from_slice::<GatewayReceiveEvent>(&body) else {
-            return Ok(())
+            return Ok(());
         };
 
         match event {
             GatewayReceiveEvent::InteractionCreate(interaction) => {
                 let Some(data) = interaction.data else {
                     println!("jeeves: got interaction without data: {:?}", interaction);
-                    return Ok(())
+                    return Ok(());
                 };
                 let Some(channel_id) = interaction.channel_id else {
-                    return Ok(())
+                    return Ok(());
                 };
                 let Some(guild_id) = interaction.guild_id else {
                     println!("jeeves: no guild id for interaction_create");
@@ -234,7 +248,7 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             interaction.id,
                             interaction.token,
                             guild_id,
-                            channel_id
+                            channel_id,
                         );
                     }
                     "leave" => {
@@ -245,7 +259,7 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             interaction.id,
                             interaction.token,
                             guild_id,
-                            channel_id
+                            channel_id,
                         );
                     }
                     "model" => {
@@ -257,7 +271,7 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             interaction.token,
                             guild_id,
                             channel_id,
-                            data
+                            data,
                         )?;
                     }
                     "status" => {
@@ -269,15 +283,16 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                             interaction.token,
                             guild_id,
                             channel_id,
-                            data
+                            data,
                         )?;
                     }
                     _ => {}
                 }
             }
             GatewayReceiveEvent::MessageCreate(message) => {
-                let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-                    .unwrap_or(empty_state());
+                let mut state =
+                    get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
+                        .unwrap_or(empty_state());
                 let Some(guild_id) = message.guild_id else {
                     println!("jeeves: got message without guild: {:?}", message);
                     return Ok(());
@@ -287,9 +302,9 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                     return Ok(());
                 };
                 if author.username == "Jeeves" {
-                    return Ok(())
+                    return Ok(());
                 }
-                let Some (guild) = state.guilds.get_mut(&guild_id) else {
+                let Some(guild) = state.guilds.get_mut(&guild_id) else {
                     // println!("jeeves: message from outside guild: {}", guild_id);
                     return Ok(());
                 };
@@ -299,52 +314,62 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                 }
                 if guild.cooldown > 0 {
                     println!("jeeves: guild is on cooldown: {}", guild.id);
-                    return Ok(())
+                    return Ok(());
                 }
                 let Some(content) = message.content else {
                     println!("jeeves: got message without content");
                     return Ok(());
                 };
                 // we get dupe message events sometimes
-                if guild.message_log.get(&message.channel_id)
+                if guild
+                    .message_log
+                    .get(&message.channel_id)
                     .unwrap_or(&vec![])
-                    .iter().any(|m| m.id == Some(message.id.clone())) {
+                    .iter()
+                    .any(|m| m.id == Some(message.id.clone()))
+                {
                     return Ok(());
                 }
 
-                guild.message_log.entry(message.channel_id.clone())
+                guild
+                    .message_log
+                    .entry(message.channel_id.clone())
                     .or_insert(vec![])
                     .push(Utterance {
                         id: Some(message.id.clone()),
                         username: author.username,
-                        content
+                        content,
                     });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
-                let completion = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
+                let completion =
+                    create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
 
                 // println!("jeeves: got completion: {}", completion);
 
                 send_message_to_discord(
-                    completion.clone(), 
-                    our, 
-                    bot, 
-                    discord_api_id, 
-                    message.channel_id.clone(), 
-                    None
+                    completion.clone(),
+                    our,
+                    bot,
+                    discord_api_id,
+                    message.channel_id.clone(),
+                    None,
                 )?;
 
-                let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-                    .unwrap_or(empty_state());
-                let Some (guild) = state.guilds.get_mut(&guild_id) else {
+                let mut state =
+                    get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
+                        .unwrap_or(empty_state());
+                let Some(guild) = state.guilds.get_mut(&guild_id) else {
                     return Ok(());
                 };
-                guild.message_log.entry(message.channel_id.clone())
+                guild
+                    .message_log
+                    .entry(message.channel_id.clone())
                     .or_insert(vec![])
                     .push(Utterance {
                         id: None,
                         username: "Jeeves".to_string(),
-                        content: completion
+                        content: completion,
                     });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
             }
@@ -370,9 +395,17 @@ In order to utilize my features, you may avail your esteemed self of one of the 
 `/leave`: Tell Jeeves to stop responding to messages in this channel
 `/model`: Change the language model Jeeves is using (`gpt-4`, `gpt-3.5-turbo`)
 `/status`: See what channels Jeeves is in, the size of message logs, model data, etc.
-"#.to_string();
+"#
+    .to_string();
 
-    send_message_to_discord(content, our, bot, discord_api_id, interaction_id, Some(interaction_token))
+    send_message_to_discord(
+        content,
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
 }
 
 fn clear_conversation(
@@ -390,12 +423,23 @@ fn clear_conversation(
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
         println!("jeeves: no guild for clear_conversation");
-        return Ok(())
+        return Ok(());
     };
-    guild.message_log.entry(channel_id.clone()).or_insert(vec![]).clear();
+    guild
+        .message_log
+        .entry(channel_id.clone())
+        .or_insert(vec![])
+        .clear();
     set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
-    send_message_to_discord("Conversation history cleared.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
+    send_message_to_discord(
+        "Conversation history cleared.".to_string(),
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
 }
 
 fn save_channel(
@@ -413,7 +457,7 @@ fn save_channel(
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
         println!("jeeves: no guild for save_channel");
-        return Ok(())
+        return Ok(());
     };
     if !guild.our_channels.contains(&channel_id) {
         println!("jeeves: pushing channel id");
@@ -422,8 +466,15 @@ fn save_channel(
     } else {
         // println!("jeeves: channel id already in");
     }
-    
-    send_message_to_discord("Thank you, sir. I shall endeavor to respond to messages in this channel.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
+
+    send_message_to_discord(
+        "Thank you, sir. I shall endeavor to respond to messages in this channel.".to_string(),
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
 }
 
 fn leave_channel(
@@ -441,7 +492,7 @@ fn leave_channel(
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
         println!("jeeves: no guild for leave_channel");
-        return Ok(())
+        return Ok(());
     };
     if guild.our_channels.contains(&channel_id) {
         println!("jeeves: leaving channel id {}", channel_id);
@@ -450,8 +501,15 @@ fn leave_channel(
     } else {
         // println!("jeeves: channel id already out");
     }
-    
-    send_message_to_discord("Thank you, sir. No longer shall I respond to messages in this channel.".to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
+
+    send_message_to_discord(
+        "Thank you, sir. No longer shall I respond to messages in this channel.".to_string(),
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
 }
 
 fn switch_model(
@@ -462,22 +520,30 @@ fn switch_model(
     interaction_token: String,
     guild_id: String,
     _channel_id: String,
-    data: InteractionData
+    data: InteractionData,
 ) -> anyhow::Result<()> {
-    let models: Vec<&str> = vec![
-        "gpt-3.5-turbo",
-        "gpt-4",
-    ];
-    let Some(opts) =  data.options else {
-        return Ok(())
+    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4"];
+    let Some(opts) = data.options else {
+        return Ok(());
     };
     let Some(opt) = opts.first() else {
         return Ok(());
     };
     if !models.contains(&opt.value.as_str().unwrap_or("")) {
         send_message_to_discord(
-            format!("Invalid model: {}. Valid models are: {:?}", opt.value.clone().to_string(), models).to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))?;
-        return Ok(())
+            format!(
+                "Invalid model: {}. Valid models are: {:?}",
+                opt.value.clone().to_string(),
+                models
+            )
+            .to_string(),
+            our,
+            bot,
+            discord_api_id,
+            interaction_id,
+            Some(interaction_token),
+        )?;
+        return Ok(());
     }
 
     let model = opt.value.as_str().unwrap_or("").to_string();
@@ -485,13 +551,20 @@ fn switch_model(
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
         println!("jeeves: no guild for switch_model");
-        return Ok(())
+        return Ok(());
     };
     guild.llm = model.clone();
     set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-    
-    send_message_to_discord(format!("LLM has been changed to {}", model).to_string(), our, bot, discord_api_id, interaction_id, Some(interaction_token))
-}   
+
+    send_message_to_discord(
+        format!("LLM has been changed to {}", model).to_string(),
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
+}
 
 fn send_status(
     our: &Address,
@@ -501,16 +574,23 @@ fn send_status(
     interaction_token: String,
     guild_id: String,
     _channel_id: String,
-    data: InteractionData
+    data: InteractionData,
 ) -> anyhow::Result<()> {
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
         println!("jeeves: no guild for switch_model");
-        return Ok(())
+        return Ok(());
     };
     let json_guild_state = serde_json::to_string(&guild)?;
-    send_message_to_discord(json_guild_state, our, bot, discord_api_id, interaction_id, Some(interaction_token))
+    send_message_to_discord(
+        json_guild_state,
+        our,
+        bot,
+        discord_api_id,
+        interaction_id,
+        Some(interaction_token),
+    )
 }
 
 fn send_message_to_discord(
@@ -558,14 +638,12 @@ fn send_message_to_discord(
 }
 
 fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> anyhow::Result<()> {
-    let Some(guild_id) = guild else {
-        return Ok(())
-    };
+    let Some(guild_id) = guild else { return Ok(()) };
 
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
     if let Some(_guild) = state.guilds.get(guild_id) {
-        return Ok(())
+        return Ok(());
     };
 
     let guild = GuildInfo {
@@ -599,12 +677,11 @@ fn create_chat_completion_for_guild_channel(
     if !guild.our_channels.contains(&channel_id) {
         return Ok("".to_string());
     }
-    
+
     let mut messages: Vec<(String, String)> = vec![system_prompt()];
-    for msg in guild.message_log.get(channel_id)
-        .unwrap_or(&vec![]).clone() {
-            messages.push((msg.username.clone(), msg.content.clone()));
-        }
+    for msg in guild.message_log.get(channel_id).unwrap_or(&vec![]).clone() {
+        messages.push((msg.username.clone(), msg.content.clone()));
+    }
 
     let mut model = guild.llm.clone();
     if model.len() == 0 {
@@ -615,54 +692,48 @@ fn create_chat_completion_for_guild_channel(
 
 fn create_chat_completion(
     messages: Vec<(String, String)>,
-    model: String
+    model: String,
 ) -> anyhow::Result<String> {
-    let body = serde_json::to_string(&serde_json::json!({
-        "model": model,
-        "messages": messages.iter().map(|m| {
-            serde_json::json!({
-                "role": if m.0 == "Jeeves" { "assistant" } else { "user" },
-                "content": format!("[{}]: {}", m.0, m.1),
-            })
-        }).collect::<Vec<_>>(),
-        "max_tokens": 200,
-        "temperature": 1.25,
-    }))?;
-
-    println!("jeeves: sending openai req: {:?}", body);
-
-    let res = send_request_await_response(
-        Method::POST, 
-        Url::parse(OPENAI_URL).unwrap(),
-        Some(HashMap::from([
-            ("Authorization".to_string(), format!("Bearer {}", OPENAI_API_KEY.trim())),
-            ("Content-Type".to_string(), "application/json".to_string()),
-        ])),
-        5,
-        body
-            .as_bytes()
-            .to_vec(),
-    )?;
-
-    println!("jeeves: got openai res: {:?}", res);
-
-    // Get the blob from the response, parse and generate the response content
-    match get_blob() {
-        Some(response_data) => {
-            let completion = serde_json::from_slice::<serde_json::Value>(&response_data.bytes)?;
-            println!("jeeves: completion: {:?}", completion);
-            match completion["choices"][0]["message"]["content"].as_str() {
-                Some(text) => {
-                    let t = text.to_string().replace("[Jeeves]:", "");
-                    println!("jeeves says: {}", t);
-                    Ok(t)
-                },
-                None => {
-                    Err(anyhow::Error::msg("Error querying OpenAI: no completion."))
-                },
-            }
-        }
-        None => Err(anyhow::Error::msg("Error querying OpenAI: no blob.")),
+    let new_messages = messages
+        .iter()
+        .map(|m| OpenaiMessage {
+            role: if m.0 == "Jeeves" {
+                "assistant".to_string()
+            } else {
+                "user".to_string()
+            },
+            content: format!("[{}]: {}", m.0, m.1),
+        })
+        .collect::<Vec<OpenaiMessage>>();
+    let chat_params = ChatParams {
+        model,
+        messages: new_messages,
+        max_tokens: Some(200),
+        temperature: Some(1.25),
+        ..Default::default()
+    };
+    let chat_request = ChatRequest {
+        params: chat_params,
+        api_key: OPENAI_API_KEY.to_string(),
+    };
+    let request = LLMRequest::Chat(chat_request);
+    println!("jeeves: sending openai req: {:?}", request);
+    let msg = Request::new()
+        .target(Address::new(
+            "our",
+            ProcessId::new(Some("openai"), "llm", "kinode"),
+        ))
+        .body(request.to_bytes())
+        .send_and_await_response(5);
+    println!("jeeves: got openai response");
+    let response = LLMResponse::parse(msg.body())?;
+    if let LLMResponse::Chat(chat) = response {
+        let completion = chat.to_chat_response();
+        let t = completion.to_string().replace("[Jeeves]:", "");
+        println!("jeeves says: {}", t);
+        Ok(t)
+    } else {
+        Err(anyhow::Error::msg("Error querying OpenAI: wrong result"))
     }
 }
 
