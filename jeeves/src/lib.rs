@@ -717,15 +717,13 @@ fn create_chat_completion(
         api_key: OPENAI_API_KEY.to_string(),
     };
     let request = LLMRequest::Chat(chat_request);
-    println!("jeeves: sending openai req: {:?}", request);
     let msg = Request::new()
         .target(Address::new(
             "our",
             ProcessId::new(Some("openai"), "llm", "kinode"),
         ))
         .body(request.to_bytes())
-        .send_and_await_response(5);
-    println!("jeeves: got openai response");
+        .send_and_await_response(10)??;
     let response = LLMResponse::parse(msg.body())?;
     if let LLMResponse::Chat(chat) = response {
         let completion = chat.to_chat_response();
