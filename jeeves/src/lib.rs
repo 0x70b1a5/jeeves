@@ -320,6 +320,11 @@ fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> any
                     println!("jeeves: got message without content");
                     return Ok(());
                 };
+
+                if !content.to_lowercase().contains("jeeves") {
+                    return Ok(())
+                }
+
                 // we get dupe message events sometimes
                 if guild
                     .message_log
