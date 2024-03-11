@@ -1,0 +1,15 @@
+{
+    "name": "Jeeves",
+    "description": "A Discord chatbot that hooks into the LLM of your choice.",
+    "image": "",
+    "properties": {
+        "package_name": "jeeves",
+        "current_version": "0.1.0",
+        "publisher": "gloriainexcelsisdeo.os",
+        "mirrors": [],
+        "code_hashes": {
+            "0.1.0": "14d55d8576e04a826fba8022d616a20c3f272bf9cf3070e224a7428841b40801"
+        },
+        "external_url": "https://github.com/0x70b1a5/jeeves"
+    }
+}
