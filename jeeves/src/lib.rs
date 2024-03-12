@@ -535,7 +535,7 @@ fn switch_model(
     _channel_id: String,
     data: InteractionData,
 ) -> anyhow::Result<()> {
-    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4"];
+    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-1106-preview"];
     let Some(opts) = data.options else {
         return Ok(());
     };
@@ -665,7 +665,7 @@ fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> an
         message_log: HashMap::new(),
         cooldown: 0,
         debug: false,
-        llm: "gpt-4".to_string(),
+        llm: "gpt-3.5-turbo".to_string(),
     };
     state.guilds.insert(guild_id.clone(), guild);
     set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
