@@ -586,7 +586,7 @@ fn send_status(
     interaction_id: String,
     interaction_token: String,
     guild_id: String,
-    _channel_id: String,
+    channel_id: String,
     data: InteractionData,
 ) -> anyhow::Result<()> {
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
@@ -606,11 +606,11 @@ fn send_status(
         r#"
 **Guild**: {}
 **Channels**: {}
-**Message Count**: {}
+**Message Count (this channel)**: {}
 **Model**: {}"#,
         guild_id,
-        guild.our_channels.join(","),
-        guild.message_log.len(),
+        guild.our_channels.join(", "),
+        guild.message_log.get(&channel_id).unwrap_or(&vec![]).len(),
         guild.llm
     ).to_string();
 
@@ -633,39 +633,54 @@ fn send_message_to_discord(
     interaction_token: Option<String>,
 ) -> anyhow::Result<()> {
     println!("jeeves: attempting to send message to discord: {}", msg);
-    let call = if let Some(interaction_token) = interaction_token {
+    // if message is longer than 900 chars, send multiple calls
+    let chunks = if msg.len() > 900 {
+        let mut chunks = vec![];
+        for chunk in msg.as_bytes().chunks(900) {
+            chunks.push(String::from_utf8_lossy(chunk).to_string());
+        }
+        chunks
+    } else {
+        vec![msg]
+    };
+    let calls = if let Some(interaction_token) = interaction_token {
         println!("jeeves: interaction token found");
-        HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
-            interaction_id,
-            interaction_token,
+        chunks.iter().map(|chunk| HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
+            interaction_id: interaction_id.clone(),
+            interaction_token: interaction_token.clone(),
             interaction_type: 4, // ChannelMessageWithSource
             data: Some(InteractionCallbackData {
                 tts: None,
-                content: Some(msg.to_string()),
+                content: Some(chunk.to_string()),
                 embeds: None,
                 allowed_mentions: None,
                 flags: None,
                 components: None,
                 attachments: None,
             }),
-        })
+        }))
+        .collect::<Vec<HttpApiCall>>()
     } else {
         println!("jeeves: interaction token not found; sending chat...");
-        HttpApiCall::Messages(MessagesCall::Create {
-            channel_id: interaction_id,
-            content: msg.to_string(),
-        })
+        chunks.iter().map(|chunk| HttpApiCall::Messages(MessagesCall::Create {
+            channel_id: interaction_id.clone(),
+            content: chunk.to_string(),
+        }))
+        .collect::<Vec<HttpApiCall>>()
     };
 
     // Send the response to the Discord API
-    Request::new()
-        .target((our.node.as_ref(), discord_api_id.clone()))
-        .body(serde_json::to_vec(&DiscordApiRequest::Http {
-            bot: bot.clone(),
-            call,
-        })?)
-        .expects_response(5)
-        .send()
+    for call in calls {
+        Request::new()
+            .target((our.node.as_ref(), discord_api_id.clone()))
+            .body(serde_json::to_vec(&DiscordApiRequest::Http {
+                bot: bot.clone(),
+                call,
+            })?)
+            .expects_response(5)
+            .send()?;
+    }
+    Ok(())
 }
 
 fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> anyhow::Result<()> {
