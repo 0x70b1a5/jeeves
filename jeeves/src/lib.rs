@@ -349,7 +349,7 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                 let completion =
                     create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
 
-                // println!("jeeves: got completion: {}", completion);
+                println!("jeeves: got completion: {}", completion);
 
                 send_message_to_discord(
                     completion.clone(),
@@ -605,9 +605,9 @@ fn send_message_to_discord(
     interaction_id: String,
     interaction_token: Option<String>,
 ) -> anyhow::Result<()> {
-    // println!("jeeves: attempting to send message to discord: {}", msg);
+    println!("jeeves: attempting to send message to discord: {}", msg);
     let call = if let Some(interaction_token) = interaction_token {
-        // println!("jeeves: interaction token found");
+        println!("jeeves: interaction token found");
         HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
             interaction_id,
             interaction_token,
@@ -623,7 +623,7 @@ fn send_message_to_discord(
             }),
         })
     } else {
-        // println!("jeeves: interaction token not found; sending chat...");
+        println!("jeeves: interaction token not found; sending chat...");
         HttpApiCall::Messages(MessagesCall::Create {
             channel_id: interaction_id,
             content: msg.to_string(),
