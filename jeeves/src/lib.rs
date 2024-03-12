@@ -346,8 +346,17 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                     });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
-                let completion =
-                    create_chat_completion_for_guild_channel(&guild_id, &message.channel_id)?;
+                let Ok(completion) = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id) else {
+                    send_message_to_discord(
+                        "[ERROR: fetching completion failed.]".to_string(),
+                        our,
+                        bot,
+                        discord_api_id,
+                        message.channel_id.clone(),
+                        None,
+                    )?;
+                    return Ok(());
+                };
 
                 println!("jeeves: got completion: {}", completion);
 
@@ -725,7 +734,7 @@ fn create_chat_completion(
             ProcessId::new(Some("openai"), "llm", "kinode"),
         ))
         .body(request.to_bytes())
-        .send_and_await_response(10)??;
+        .send_and_await_response(30)??;
     let response = LLMResponse::parse(msg.body())?;
     if let LLMResponse::Chat(chat) = response {
         let completion = chat.to_chat_response();
