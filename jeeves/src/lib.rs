@@ -19,7 +19,6 @@ use kinode_process_lib::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use url::Url;
 
 wit_bindgen::generate!({
     path: "wit",
@@ -186,7 +185,7 @@ fn init(our: Address) {
     set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
     loop {
-        match handle_message(&our, &discord_api_id, &bot) {
+        match handle_jeeves_message(&our, &discord_api_id, &bot) {
             Ok(()) => {}
             Err(e) => {
                 println!("jeeves: error: {e:?}");
@@ -195,7 +194,7 @@ fn init(our: Address) {
     }
 }
 
-fn handle_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> anyhow::Result<()> {
+fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> anyhow::Result<()> {
     // We currently don't do anything with Responses.
     // If we did, we could match on await_message() and handle the Response type.
     if let Message::Request { ref body, .. } = await_message()? {
