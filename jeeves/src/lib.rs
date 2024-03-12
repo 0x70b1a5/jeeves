@@ -592,12 +592,30 @@ fn send_status(
     let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
         .unwrap_or(empty_state());
     let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        println!("jeeves: no guild for switch_model");
+        send_message_to_discord(
+            "[ERROR: no state found for this guild.]".to_string(),
+            our,
+            bot,
+            discord_api_id,
+            interaction_id,
+            Some(interaction_token),
+        )?;
         return Ok(());
     };
-    let json_guild_state = serde_json::to_string(&guild)?;
+    let msg = format!(
+        r#"
+**Guild**: {}
+**Channels**: {}
+**Message Count**: {}
+**Model**: {}"#,
+        guild_id,
+        guild.our_channels.join(","),
+        guild.message_log.len(),
+        guild.llm
+    ).to_string();
+
     send_message_to_discord(
-        json_guild_state,
+        msg,
         our,
         bot,
         discord_api_id,
