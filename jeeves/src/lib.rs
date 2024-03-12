@@ -737,7 +737,7 @@ fn create_chat_completion(
     let chat_params = ChatParams {
         model,
         messages: new_messages,
-        max_tokens: Some(1000),
+        max_tokens: Some(900),
         temperature: Some(1.25),
         ..Default::default()
     };
