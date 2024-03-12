@@ -535,7 +535,7 @@ fn switch_model(
     _channel_id: String,
     data: InteractionData,
 ) -> anyhow::Result<()> {
-    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-1106-preview"];
+    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-1106-preview", "gpt-4-turbo-preview"];
     let Some(opts) = data.options else {
         return Ok(());
     };
@@ -725,7 +725,7 @@ fn create_chat_completion(
     };
     let chat_request = ChatRequest {
         params: chat_params,
-        api_key: OPENAI_API_KEY.to_string(),
+        api_key: OPENAI_API_KEY.trim().to_string(),
     };
     let request = LLMRequest::Chat(chat_request);
     let msg = Request::new()
