@@ -11,10 +11,7 @@ use discord_api::{
     InteractionData, InteractionsCall, MessagesCall, NewApplicationCommand,
 };
 use kinode_process_lib::{
-    await_message, call_init, get_blob, get_typed_state,
-    http::{
-        send_request, send_request_await_response, HttpClientAction, Method, OutgoingHttpRequest,
-    },
+    await_message, call_init, get_typed_state,
     println, set_state, Address, Message, ProcessId, Request, SendError,
 };
 use serde::{Deserialize, Serialize};
@@ -31,7 +28,6 @@ wit_bindgen::generate!({
 const BOT_APPLICATION_ID: &str = include_str!("../.bot_application_id");
 const BOT_TOKEN: &str = include_str!("../.bot_token");
 const OPENAI_API_KEY: &str = include_str!("../.openai_api_key");
-const OPENAI_URL: &str = "https://api.openai.com/v1/chat/completions";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Utterance {
@@ -614,7 +610,7 @@ fn send_status(
 **Message Count (this channel)**: {}
 **Model**: {}"#,
         guild_id,
-        guild.our_channels.join(", "),
+        format!("#{}", guild.our_channels.join(", #")),
         guild.message_log.get(&channel_id).unwrap_or(&vec![]).len(),
         guild.llm
     ).to_string();
@@ -748,6 +744,8 @@ fn create_chat_completion(
         .map(|m| OpenaiMessage {
             role: if m.0 == "Jeeves" {
                 "assistant".to_string()
+            } else if m.0 == "system" {
+                "system".to_string()
             } else {
                 "user".to_string()
             },
