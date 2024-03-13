@@ -28,6 +28,7 @@ wit_bindgen::generate!({
 const BOT_APPLICATION_ID: &str = include_str!("../.bot_application_id");
 const BOT_TOKEN: &str = include_str!("../.bot_token");
 const OPENAI_API_KEY: &str = include_str!("../.openai_api_key");
+const ICON: &str = include_str!("./icon");
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Utterance {
@@ -78,6 +79,23 @@ fn init(our: Address) {
     }
 
     println!("{our}: discord_api spawned");
+
+    // add ourselves to the homepage
+    Request::to(("our", "homepage", "homepage", "sys"))
+    .body(
+        serde_json::json!({
+            "Add": {
+                "label": "Jeeves",
+                "icon": ICON,
+                "path": "/", // just our root
+            }
+        })
+        .to_string()
+        .as_bytes()
+        .to_vec(),
+    )
+    .send()
+    .unwrap();
 
     // Register all the commands the bot will handle
     let help_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
