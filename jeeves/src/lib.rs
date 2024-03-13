@@ -346,9 +346,10 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                     });
                 set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
-                let Ok(completion) = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id) else {
+                let completion = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id);
+                if let Err(e) = completion {
                     send_message_to_discord(
-                        "[ERROR: fetching completion failed.]".to_string(),
+                        format!("[ERROR: fetching completion failed: {}]", e).to_string(),
                         our,
                         bot,
                         discord_api_id,
@@ -356,6 +357,10 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                         None,
                     )?;
                     return Ok(());
+                }
+
+                let Ok(completion) = completion else {
+                    return Ok(())
                 };
 
                 println!("jeeves: got completion: {}", completion);
