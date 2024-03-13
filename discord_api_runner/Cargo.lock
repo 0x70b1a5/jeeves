@@ -498,7 +498,7 @@ dependencies = [
 [[package]]
 name = "discord_api"
 version = "0.1.0"
-source = "git+https://github.com/uqbar-dao/discord_api.git?rev=b955de324e8391aad30b8087a59511699fe220c8#b955de324e8391aad30b8087a59511699fe220c8"
+source = "git+https://github.com/uqbar-dao/discord_api.git?rev=81c0f6e6805a8a678f5410e8b2260b22c640f9e5#81c0f6e6805a8a678f5410e8b2260b22c640f9e5"
 dependencies = [
  "anyhow",
  "bincode",
