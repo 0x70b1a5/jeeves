@@ -6,6 +6,6 @@ pkg/*.wasm
 */wit/
 .cargo
 target/
-*.bot_token
-*.bot_application_id
-*.*_api_key
+*/**/.bot_token
+*/**/.bot_application_id
+*/**/.*_api_key
