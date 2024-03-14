@@ -334,8 +334,17 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                     return Ok(());
                 };
 
-                if !content.to_lowercase().contains("jeeves") {
-                    return Ok(())
+                let mut should_respond = false;
+                if content.to_lowercase().contains("jeeves") {
+                    should_respond = true;
+                } else if let Some(mentions) = message.mentions {
+                    if mentions.iter().any(|u| u.username == "Jeeves") {
+                        should_respond = true;
+                    }
+                };
+
+                if !should_respond {
+                    return Ok(());
                 }
 
                 // we get dupe message events sometimes
