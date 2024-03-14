@@ -18,8 +18,8 @@ use discord_api::{
     InteractionData, InteractionsCall, MessagesCall, NewApplicationCommand,
 };
 use kinode_process_lib::{
-    await_message, call_init, get_typed_state, println, set_state, timer::set_timer, 
-    Address, Message, ProcessId, Request, SendError,
+    await_message, call_init, get_typed_state, println, set_state, timer::set_timer, Address,
+    Message, ProcessId, Request, SendError,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -98,20 +98,20 @@ fn init(our: Address) {
 
     // add ourselves to the homepage
     Request::to(("our", "homepage", "homepage", "sys"))
-    .body(
-        serde_json::json!({
-            "Add": {
-                "label": "Jeeves",
-                "icon": ICON,
-                "path": "/", // just our root
-            }
-        })
-        .to_string()
-        .as_bytes()
-        .to_vec(),
-    )
-    .send()
-    .unwrap();
+        .body(
+            serde_json::json!({
+                "Add": {
+                    "label": "Jeeves",
+                    "icon": ICON,
+                    "path": "/", // just our root
+                }
+            })
+            .to_string()
+            .as_bytes()
+            .to_vec(),
+        )
+        .send()
+        .unwrap();
 
     // Register all the commands the bot will handle
     let help_command = HttpApiCall::Commands(CommandsCall::CreateApplicationCommand {
@@ -224,13 +224,20 @@ fn init(our: Address) {
     }
 }
 
-fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId) -> anyhow::Result<()> {
+fn handle_jeeves_message(
+    our: &Address,
+    discord_api_id: &ProcessId,
+    bot: &BotId,
+) -> anyhow::Result<()> {
     match await_message() {
         Ok(Message::Request { ref body, .. }) => {
             // Handle Discord API events
             // Can handle any of their abundant events here, depending on your bot's perms...
             let Ok(event) = serde_json::from_slice::<GatewayReceiveEvent>(&body) else {
-                print_to_terminal(0, format!("discord event: {:?}", String::from_utf8_lossy(body)));
+                print_to_terminal(
+                    0,
+                    format!("discord event: {:?}", String::from_utf8_lossy(body)).as_str(),
+                );
                 return Ok(());
             };
 
@@ -385,7 +392,8 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                         });
                     set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
 
-                    let completion = create_chat_completion_for_guild_channel(&guild_id, &message.channel_id);
+                    let completion =
+                        create_chat_completion_for_guild_channel(&guild_id, &message.channel_id);
                     if let Err(e) = completion {
                         send_message_to_discord(
                             format!("[ERROR: fetching completion failed: {}]", e).to_string(),
@@ -399,7 +407,7 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
                     }
 
                     let Ok(completion) = completion else {
-                        return Ok(())
+                        return Ok(());
                     };
 
                     println!("jeeves: got completion: {}", completion);
@@ -437,11 +445,11 @@ fn handle_jeeves_message(our: &Address, discord_api_id: &ProcessId, bot: &BotId)
             // Responses currently only come in from popping Timers.
             // Timers are right now used for queueing multi-stage messages.
             // Each Timer has a context of what message to send, and the data necessary to send it.
-         
-            // TODO shrimplement 
-         
+
+            // TODO shrimplement
+
             println!("jeeves: got response: {:?}", String::from_utf8_lossy(body));
-        } 
+        }
         _ => {}
     }
     Ok(())
@@ -590,7 +598,12 @@ fn switch_model(
     _channel_id: String,
     data: InteractionData,
 ) -> anyhow::Result<()> {
-    let models: Vec<&str> = vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-1106-preview", "gpt-4-turbo-preview"];
+    let models: Vec<&str> = vec![
+        "gpt-3.5-turbo",
+        "gpt-4",
+        "gpt-4-1106-preview",
+        "gpt-4-turbo-preview",
+    ];
     let Some(opts) = data.options else {
         return Ok(());
     };
@@ -667,7 +680,8 @@ fn send_status(
         format!("#{}", guild.our_channels.join(", #")),
         guild.message_log.get(&channel_id).unwrap_or(&vec![]).len(),
         guild.llm
-    ).to_string();
+    )
+    .to_string();
 
     send_message_to_discord(
         msg,
@@ -700,28 +714,36 @@ fn send_message_to_discord(
     };
     let calls = if let Some(interaction_token) = interaction_token {
         println!("jeeves: interaction token found");
-        chunks.iter().map(|chunk| HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
-            interaction_id: interaction_id.clone(),
-            interaction_token: interaction_token.clone(),
-            interaction_type: 4, // ChannelMessageWithSource
-            data: Some(InteractionCallbackData {
-                tts: None,
-                content: Some(chunk.to_string()),
-                embeds: None,
-                allowed_mentions: None,
-                flags: None,
-                components: None,
-                attachments: None,
-            }),
-        }))
-        .collect::<Vec<HttpApiCall>>()
+        chunks
+            .iter()
+            .map(|chunk| {
+                HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
+                    interaction_id: interaction_id.clone(),
+                    interaction_token: interaction_token.clone(),
+                    interaction_type: 4, // ChannelMessageWithSource
+                    data: Some(InteractionCallbackData {
+                        tts: None,
+                        content: Some(chunk.to_string()),
+                        embeds: None,
+                        allowed_mentions: None,
+                        flags: None,
+                        components: None,
+                        attachments: None,
+                    }),
+                })
+            })
+            .collect::<Vec<HttpApiCall>>()
     } else {
         println!("jeeves: interaction token not found; sending chat...");
-        chunks.iter().map(|chunk| HttpApiCall::Messages(MessagesCall::Create {
-            channel_id: interaction_id.clone(),
-            content: chunk.to_string(),
-        }))
-        .collect::<Vec<HttpApiCall>>()
+        chunks
+            .iter()
+            .map(|chunk| {
+                HttpApiCall::Messages(MessagesCall::Create {
+                    channel_id: interaction_id.clone(),
+                    content: chunk.to_string(),
+                })
+            })
+            .collect::<Vec<HttpApiCall>>()
     };
 
     // Send the response to the Discord API
@@ -883,13 +905,7 @@ fn handle_http_server_request(
                 return Ok(());
             };
 
-            handle_chat_request(
-                our,
-                our_channel_id,
-                source,
-                &blob.bytes,
-                false,
-            )?;
+            handle_chat_request(our, our_channel_id, source, &blob.bytes, false)?;
         }
         HttpServerRequest::WebSocketClose(_channel_id) => {}
         HttpServerRequest::Http(request) => {
@@ -899,24 +915,14 @@ fn handle_http_server_request(
                     let mut headers = HashMap::new();
                     headers.insert("Content-Type".to_string(), "application/json".to_string());
 
-                    send_response(
-                        StatusCode::OK,
-                        Some(headers),
-                        vec![],
-                    );
+                    send_response(StatusCode::OK, Some(headers), vec![]);
                 }
                 // Send a message
                 "POST" => {
                     let Some(blob) = get_blob() else {
                         return Ok(());
                     };
-                    handle_chat_request(
-                        our,
-                        our_channel_id,
-                        source,
-                        &blob.bytes,
-                        true,
-                    )?;
+                    handle_chat_request(our, our_channel_id, source, &blob.bytes, true)?;
 
                     // Send an http response via the http server
                     send_response(StatusCode::CREATED, None, vec![]);
@@ -931,4 +937,3 @@ fn handle_http_server_request(
 
     Ok(())
 }
-

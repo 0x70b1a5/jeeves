@@ -1,4 +1,4 @@
-// TODO: This was copy-pastad from the llm repo. Remove this once we have a way to properly fetch protocols from processes. 
+// TODO: This was copy-pastad from the llm repo. Remove this once we have a way to properly fetch protocols from processes.
 pub mod lccp {
 
     use serde::Deserialize;
@@ -426,4 +426,3 @@ pub mod openai {
         pub total_tokens: i32,
     }
 }
-
