@@ -15,7 +15,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.8"
 kinode_process_lib = { git = "https://github.com/uqbar-dao/process_lib.git", tag = "v0.6.0" }
-discord_api = { git = "https://github.com/uqbar-dao/discord_api.git", rev="07b086df804974790724e38382f70f65442116f5", features = ["with_process_lib"] }
+discord_api = { git = "https://github.com/uqbar-dao/discord_api.git", rev="4dd6fbcb21b37def801a64b91e5d85cb85fcf378", features = ["with_process_lib"] }
 wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "21a46c7" }
 url = "2.5.0"
 
