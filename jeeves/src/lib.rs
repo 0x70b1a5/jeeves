@@ -873,12 +873,11 @@ fn init_discord_api(
         .send_and_await_response(5)
 }
 
-fn handle_chat_request(
+fn handle_frontend_request(
     our: &Address,
     our_channel_id: &mut u32,
     source: &Address,
     body: &[u8],
-    is_post: bool,
 ) -> anyhow::Result<()> {
     Ok(())
 }
@@ -905,27 +904,21 @@ fn handle_http_server_request(
                 return Ok(());
             };
 
-            handle_chat_request(our, our_channel_id, source, &blob.bytes, false)?;
+            handle_frontend_request(our, our_channel_id, source, &blob.bytes)?;
         }
         HttpServerRequest::WebSocketClose(_channel_id) => {}
         HttpServerRequest::Http(request) => {
             match request.method()?.as_str() {
-                // Get all messages
+                // Get state
                 "GET" => {
                     let mut headers = HashMap::new();
                     headers.insert("Content-Type".to_string(), "application/json".to_string());
+                    let state =
+                        get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
+                            .unwrap_or(empty_state());
+                    let state = serde_json::to_vec(&state)?;
 
-                    send_response(StatusCode::OK, Some(headers), vec![]);
-                }
-                // Send a message
-                "POST" => {
-                    let Some(blob) = get_blob() else {
-                        return Ok(());
-                    };
-                    handle_chat_request(our, our_channel_id, source, &blob.bytes, true)?;
-
-                    // Send an http response via the http server
-                    send_response(StatusCode::CREATED, None, vec![]);
+                    send_response(StatusCode::OK, Some(headers), state);
                 }
                 _ => {
                     // Method not allowed
