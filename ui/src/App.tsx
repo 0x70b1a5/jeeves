@@ -49,6 +49,7 @@ function App() {
   return (
     <div className='w-screen h-screen flex flex-col place-items-center place-content-center'>
       <h1>Jeeves</h1>
+      <div className="mt-2">UI coming soon™️</div>
     </div>
   );
 }
