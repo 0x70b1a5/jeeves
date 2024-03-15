@@ -26,11 +26,13 @@
             "net:distro:sys",
             "vfs:distro:sys",
             "http_client:distro:sys",
+            "http_server:distro:sys",
             "discord_api_runner:jeeves:gloriainexcelsisdeo.os",
             "homepage:homepage:sys"
         ],
         "grant_capabilities": [
             "http_client:distro:sys",
+            "http_server:distro:sys",
             "timer:distro:sys",
             "discord_api_runner:jeeves:gloriainexcelsisdeo.os"
         ],
