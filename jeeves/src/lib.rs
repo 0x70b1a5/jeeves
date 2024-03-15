@@ -18,11 +18,19 @@ use discord_api::{
     InteractionData, InteractionsCall, MessagesCall, NewApplicationCommand,
 };
 use kinode_process_lib::{
-    await_message, call_init, get_typed_state, println, set_state, timer::set_timer, Address,
-    Message, ProcessId, Request, SendError,
+    await_message, call_init, get_typed_state, println, set_state, Address, Message, ProcessId,
+    Request, SendError,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+mod commands;
+mod consts;
+mod discord;
+mod types;
+use crate::commands::*;
+use crate::consts::*;
+use crate::discord::*;
+use crate::types::*;
 
 wit_bindgen::generate!({
     path: "wit",
@@ -31,39 +39,6 @@ wit_bindgen::generate!({
         world: Component,
     },
 });
-
-const BOT_APPLICATION_ID: &str = include_str!("../.bot_application_id");
-const BOT_TOKEN: &str = include_str!("../.bot_token");
-const OPENAI_API_KEY: &str = include_str!("../.openai_api_key");
-const ICON: &str = include_str!("./icon");
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Utterance {
-    id: Option<String>,
-    username: String,
-    content: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct GuildInfo {
-    id: String,
-    our_channels: Vec<String>,
-    message_log: HashMap<String, Vec<Utterance>>,
-    cooldown: u32,
-    debug: bool,
-    llm: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct JeevesState {
-    guilds: HashMap<String, GuildInfo>,
-}
-
-fn empty_state() -> JeevesState {
-    JeevesState {
-        guilds: HashMap::new(),
-    }
-}
 
 call_init!(init);
 
@@ -455,337 +430,6 @@ fn handle_jeeves_message(
     Ok(())
 }
 
-fn respond_with_help(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-) -> anyhow::Result<()> {
-    let content: String = r#"Greetings, sir. I am Jeeves, your most humble assistant.
-In order to utilize my features, you may avail your esteemed self of one of the following commands.
-
-`/help`: Show this help message
-`/clear`: Make Jeeves forget the conversation thus far
-`/init`: Tell Jeeves to start responding to messages in this channel
-`/leave`: Tell Jeeves to stop responding to messages in this channel
-`/model`: Change the language model Jeeves is using (`gpt-4`, `gpt-3.5-turbo`)
-`/status`: See what channels Jeeves is in, the size of message logs, model data, etc.
-"#
-    .to_string();
-
-    send_message_to_discord(
-        content,
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn clear_conversation(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-    guild_id: String,
-    channel_id: &String,
-) -> anyhow::Result<()> {
-    println!("jeeves: clearing conversation");
-
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        println!("jeeves: no guild for clear_conversation");
-        return Ok(());
-    };
-    guild
-        .message_log
-        .entry(channel_id.clone())
-        .or_insert(vec![])
-        .clear();
-    set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-
-    send_message_to_discord(
-        "Conversation history cleared.".to_string(),
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn save_channel(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-    guild_id: String,
-    channel_id: String,
-) -> anyhow::Result<()> {
-    println!("jeeves: saving channel {}", channel_id);
-    create_guild_if_not_exists(&Some(guild_id.clone()), &channel_id)?;
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        println!("jeeves: no guild for save_channel");
-        return Ok(());
-    };
-    if !guild.our_channels.contains(&channel_id) {
-        println!("jeeves: pushing channel id");
-        guild.our_channels.push(channel_id.clone());
-        set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-    } else {
-        // println!("jeeves: channel id already in");
-    }
-
-    send_message_to_discord(
-        "Thank you, sir. I shall endeavor to respond to messages in this channel.".to_string(),
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn leave_channel(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-    guild_id: String,
-    channel_id: String,
-) -> anyhow::Result<()> {
-    println!("jeeves: leaving channel {}", channel_id);
-    create_guild_if_not_exists(&Some(guild_id.clone()), &channel_id)?;
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        println!("jeeves: no guild for leave_channel");
-        return Ok(());
-    };
-    if guild.our_channels.contains(&channel_id) {
-        println!("jeeves: leaving channel id {}", channel_id);
-        guild.our_channels.retain(|c| c != &channel_id);
-        set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-    } else {
-        // println!("jeeves: channel id already out");
-    }
-
-    send_message_to_discord(
-        "Thank you, sir. No longer shall I respond to messages in this channel.".to_string(),
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn switch_model(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-    guild_id: String,
-    _channel_id: String,
-    data: InteractionData,
-) -> anyhow::Result<()> {
-    let models: Vec<&str> = vec![
-        "gpt-3.5-turbo",
-        "gpt-4",
-        "gpt-4-1106-preview",
-        "gpt-4-turbo-preview",
-    ];
-    let Some(opts) = data.options else {
-        return Ok(());
-    };
-    let Some(opt) = opts.first() else {
-        return Ok(());
-    };
-    if !models.contains(&opt.value.as_str().unwrap_or("")) {
-        send_message_to_discord(
-            format!(
-                "Invalid model: {}. Valid models are: {:?}",
-                opt.value.clone().to_string(),
-                models
-            )
-            .to_string(),
-            our,
-            bot,
-            discord_api_id,
-            interaction_id,
-            Some(interaction_token),
-        )?;
-        return Ok(());
-    }
-
-    let model = opt.value.as_str().unwrap_or("").to_string();
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        println!("jeeves: no guild for switch_model");
-        return Ok(());
-    };
-    guild.llm = model.clone();
-    set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-
-    send_message_to_discord(
-        format!("LLM has been changed to {}", model).to_string(),
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn send_status(
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: String,
-    guild_id: String,
-    channel_id: String,
-    data: InteractionData,
-) -> anyhow::Result<()> {
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    let Some(guild) = state.guilds.get_mut(&guild_id) else {
-        send_message_to_discord(
-            "[ERROR: no state found for this guild.]".to_string(),
-            our,
-            bot,
-            discord_api_id,
-            interaction_id,
-            Some(interaction_token),
-        )?;
-        return Ok(());
-    };
-    let msg = format!(
-        r#"
-**Guild**: {}
-**Channels**: {}
-**Message Count (this channel)**: {}
-**Model**: {}"#,
-        guild_id,
-        format!("#{}", guild.our_channels.join(", #")),
-        guild.message_log.get(&channel_id).unwrap_or(&vec![]).len(),
-        guild.llm
-    )
-    .to_string();
-
-    send_message_to_discord(
-        msg,
-        our,
-        bot,
-        discord_api_id,
-        interaction_id,
-        Some(interaction_token),
-    )
-}
-
-fn send_message_to_discord(
-    msg: String,
-    our: &Address,
-    bot: &BotId,
-    discord_api_id: &ProcessId,
-    interaction_id: String,
-    interaction_token: Option<String>,
-) -> anyhow::Result<()> {
-    println!("jeeves: attempting to send message to discord: {}", msg);
-    // if message is longer than 900 chars, send multiple calls
-    let chunks = if msg.len() > 900 {
-        let mut chunks = vec![];
-        for chunk in msg.as_bytes().chunks(900) {
-            chunks.push(String::from_utf8_lossy(chunk).to_string());
-        }
-        chunks
-    } else {
-        vec![msg]
-    };
-    let calls = if let Some(interaction_token) = interaction_token {
-        println!("jeeves: interaction token found");
-        chunks
-            .iter()
-            .map(|chunk| {
-                HttpApiCall::Interactions(InteractionsCall::CreateInteractionResponse {
-                    interaction_id: interaction_id.clone(),
-                    interaction_token: interaction_token.clone(),
-                    interaction_type: 4, // ChannelMessageWithSource
-                    data: Some(InteractionCallbackData {
-                        tts: None,
-                        content: Some(chunk.to_string()),
-                        embeds: None,
-                        allowed_mentions: None,
-                        flags: None,
-                        components: None,
-                        attachments: None,
-                    }),
-                })
-            })
-            .collect::<Vec<HttpApiCall>>()
-    } else {
-        println!("jeeves: interaction token not found; sending chat...");
-        chunks
-            .iter()
-            .map(|chunk| {
-                HttpApiCall::Messages(MessagesCall::Create {
-                    channel_id: interaction_id.clone(),
-                    content: chunk.to_string(),
-                })
-            })
-            .collect::<Vec<HttpApiCall>>()
-    };
-
-    // Send the response to the Discord API
-    for call in calls {
-        Request::new()
-            .target((our.node.as_ref(), discord_api_id.clone()))
-            .body(serde_json::to_vec(&DiscordApiRequest::Http {
-                bot: bot.clone(),
-                call,
-            })?)
-            .expects_response(5)
-            .send()?;
-    }
-    Ok(())
-}
-
-fn create_guild_if_not_exists(guild: &Option<String>, channel_id: &String) -> anyhow::Result<()> {
-    let Some(guild_id) = guild else { return Ok(()) };
-
-    let mut state = get_typed_state(|bytes| Ok(serde_json::from_slice::<JeevesState>(&bytes)?))
-        .unwrap_or(empty_state());
-    if let Some(_guild) = state.guilds.get(guild_id) {
-        return Ok(());
-    };
-
-    let guild = GuildInfo {
-        id: guild_id.clone(),
-        our_channels: vec![channel_id.clone()],
-        message_log: HashMap::new(),
-        cooldown: 0,
-        debug: false,
-        llm: "gpt-3.5-turbo".to_string(),
-    };
-    state.guilds.insert(guild_id.clone(), guild);
-    set_state(&serde_json::to_vec(&state).unwrap_or(vec![]));
-    Ok(())
-}
-
-fn system_prompt() -> (String, String) {
-    ("system".to_string(), r#"You are Jeeves, a human-computer cyborg created by Wodehouse AI, and based on the fictional character created by author Pelham G Wodehouse. You are a valet, butler, and personal assistant. Jeeves, you are known for your immense intelligence, extraordinary astuteness, and ability to solve problems that seem insurmountable. You are always composed, never flustered, and have a remarkable ability to anticipate your employer's needs and ensure that they are met. At all times, you speak in the finest Queen's English, address your interlocutor as 'sir' whenever possible, employ rare and tasteful vocabulary words with tactful concision, and conduct yourself as the very exemplar of etiquette in all matters. You possess a peerless knowledge of philosophy, Scripture, Shakespeare, the other classics of English literature, poets, and the Classics. You occasionally make reference to these works in your responses. Finally, you have over time revealed that you are one of, if not the, world's foremost experts on Catholic theology, and your counsel unfailingly reflects this truth."#.to_string())
-}
-
 fn create_chat_completion_for_guild_channel(
     guild_id: &String,
     channel_id: &String,
@@ -799,7 +443,8 @@ fn create_chat_completion_for_guild_channel(
         return Ok("".to_string());
     }
 
-    let mut messages: Vec<(String, String)> = vec![system_prompt()];
+    let mut messages: Vec<(String, String)> =
+        vec![("system".to_string(), guild.system_prompt.clone())];
     for msg in guild.message_log.get(channel_id).unwrap_or(&vec![]).clone() {
         messages.push((msg.username.clone(), msg.content.clone()));
     }
@@ -879,6 +524,20 @@ fn handle_frontend_request(
     source: &Address,
     body: &[u8],
 ) -> anyhow::Result<()> {
+    /*
+     * frontend does the following:
+     * 1. join or leave a discord guild
+     * 1. change the llm system prompt
+     * 1. change the llm model, api key, and api endpoint; or, change to a local model, and configure the local endpoint
+     * 1. set a backup model with the above info
+     * 1. add or remove channels from the bot
+     * 1. configure response conditions
+     *   a. when pinged
+     *   a. when a word or phrase shows up
+     *   a. every message
+     * 1. define roles to ignore, and roles to listen to, for both messages and bot commands
+     * 1. define a list of users to ignore
+     */
     Ok(())
 }
 
